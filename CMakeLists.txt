@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
-
+find_package(pthread)
+find_package(ev)
+target_link_libraries(final ${PTHREAD_LIBRARIES} ${EV_LIBRARIES} )
 add_executable(final main.c arg.c worker.c) 
 set_target_properties(final PROPERTIES COMPILE_FLAGS "-w -std=c11 -D_POSIX_SOURCE -D_DEFAULT_SOURCE" LINK_FLAGS "-lpthread -lev")
