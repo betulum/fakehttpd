@@ -15,6 +15,8 @@ void ok(int sock) {
 	char buf[64];
 	sprintf(buf, "HTTP/1.0 200 OK\r\n");
 	send(sock, buf, strlen(buf), MSG_NOSIGNAL);
+	sprintf(buf, "Content-type: text/html\r\n");
+	send(sock, buf, strlen(buf), MSG_NOSIGNAL);	
 }
 
 void fail(int sock) {
