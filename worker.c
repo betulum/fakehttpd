@@ -81,6 +81,7 @@ void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 			//send(watcher->fd, buf, rec, MSG_NOSIGNAL);
 		}
 	}
+        close(watcher->fd);
 	ev_io_stop(loop, watcher);
 	free(watcher);
 }
