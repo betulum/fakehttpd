@@ -42,6 +42,10 @@ void nofile(int sock, const char *path) {
 void senddata(const char *path, int sock) {
 	char rpath[256];
 	sprintf(rpath, ".%s", path);
+	char *idx = index(rpath, '?');
+	if (idx != NULL)
+		*idx='\0';
+
 	int fd = open(rpath, O_RDONLY);
 	if (fd < 0) {
 		nofile(sock, path);
