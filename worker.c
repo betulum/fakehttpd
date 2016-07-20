@@ -31,7 +31,7 @@ void fail(int sock) {
 
 void nofile(int sock, const char *path) {
 	char buf[64];
-	sprintf(buf, "HTTP/1.0 404 RESOURCE %s NOT AVAILABLE\r\n", path);
+	sprintf(buf, "HTTP/1.0 404 RESOURCE NOT AVAILABLE\r\n");
 	send(sock, buf, strlen(buf), MSG_NOSIGNAL);
 	sprintf(buf, "Content-Type: text/html\r\n");
 	send(sock, buf, strlen(buf), MSG_NOSIGNAL);	
@@ -56,7 +56,9 @@ void senddata(const char *path, int sock) {
 			nofile(sock, path);
 		else {
 			ok(sock, bytes);
-			send(sock, buf, bytes, MSG_NOSIGNAL); 
+			int ret = 0, send_bytes = 0;
+			while (send_bytes < bytes && ret >= 0 )
+				send_bytes += ret = send(sock, buf, bytes, MSG_NOSIGNAL);
 		}
 		close(fd);
 	}
