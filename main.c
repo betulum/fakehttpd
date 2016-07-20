@@ -29,7 +29,8 @@ int main(int argc, char **argv)
 
 	sigset_t sigset;
 	sigemptyset(&sigset);
-	sigaddset(&sigset, SIGINT| SIGTERM);
+	sigaddset(&sigset, SIGINT);
+	sigaddset(&sigset, SIGTERM);
 	if (pthread_sigmask(SIG_BLOCK, &sigset, NULL) != 0) {
 		perror("pthread_sigmask");
 		return EXIT_FAILURE;
@@ -43,12 +44,11 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 	}
-	
-	struct sigaction sigact;
-	sigact.sa_handler = ctrlc;
-	sigaction(SIGINT|SIGTERM, &sigact, NULL);
+	//struct sigaction sigact;
+	//sigact.sa_handler = ctrlc;
+	//sigaction(SIGINT, &sigact, NULL);
 	pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
-
+	
 	for(int i=0; i<cpu_number; i++)
 		pthread_join(worker[i], NULL);
 	

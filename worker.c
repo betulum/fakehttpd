@@ -11,11 +11,13 @@
 
 #include"arg.h"
 
-void ok(int sock) {
+void ok(int sock, int size) {
 	char buf[64];
 	sprintf(buf, "HTTP/1.0 200 OK\r\n");
 	send(sock, buf, strlen(buf), MSG_NOSIGNAL);
-	sprintf(buf, "Content-type: text/html\r\n");
+	sprintf(buf, "Content-Type: text/html\r\n");
+	send(sock, buf, strlen(buf), MSG_NOSIGNAL);	
+	sprintf(buf, "Content-Length: %d\r\n\r\n", size);
 	send(sock, buf, strlen(buf), MSG_NOSIGNAL);	
 }
 
@@ -23,27 +25,33 @@ void fail(int sock) {
 	char buf[64];
 	sprintf(buf, "HTTP/1.0 400 BAD REQUEST\r\n");
 	send(sock, buf, strlen(buf), MSG_NOSIGNAL);
+	sprintf(buf, "Content-Type: text/html\r\n\r\n");
+	send(sock, buf, strlen(buf), MSG_NOSIGNAL);	
 }
 
-void nofile(int sock) {
+void nofile(int sock, const char *path) {
 	char buf[64];
-	sprintf(buf, "HTTP/1.0 404 RESOURCE NOT AVAILABLE\r\n");
+	sprintf(buf, "HTTP/1.0 404 RESOURCE %s NOT AVAILABLE\r\n", path);
 	send(sock, buf, strlen(buf), MSG_NOSIGNAL);
+	sprintf(buf, "Content-Type: text/html\r\n");
+	send(sock, buf, strlen(buf), MSG_NOSIGNAL);	
+	sprintf(buf, "Content-Length: 0\r\n\r\n");
+	send(sock, buf, strlen(buf), MSG_NOSIGNAL);	
 }
 
 void senddata(const char *path, int sock) {
-	int fd = open(path, O_RDONLY);
+	char rpath[256];
+	sprintf(rpath, ".%s", path);
+	int fd = open(rpath, O_RDONLY);
 	if (fd < 0) {
-		nofile(sock);
+		nofile(sock, path);
 	} else {
 		char buf[1024*1024];	
-		struct stat st;
-		stat(path, &st);
-		int bytes = read(fd, buf, st.st_size);
+		int bytes = read(fd, buf, sizeof(buf));
 		if (bytes < 0) 
-			nofile(sock);
+			nofile(sock, path);
 		else {
-			ok(sock);
+			ok(sock, bytes);
 			send(sock, buf, bytes, MSG_NOSIGNAL); 
 		}
 		close(fd);
@@ -55,13 +63,9 @@ void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
 	char buf[1024];
 	ssize_t rec = recv(watcher->fd, buf, 1024, MSG_NOSIGNAL);
-	if (rec < 0) 
+	if (rec < 0) { 
 		return;
-	else if (rec == 0) {
-		ev_io_stop(loop, watcher);
-		free(watcher);
-		return;
-	} else {
+	} else if(rec > 0) {
 		char path[256];
 		int res = sscanf(buf, "GET %s", path);
  		if (res == 0 || res == EOF) 
@@ -71,6 +75,8 @@ void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 			//send(watcher->fd, buf, rec, MSG_NOSIGNAL);
 		}
 	}
+	ev_io_stop(loop, watcher);
+	free(watcher);
 }
 
 void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
