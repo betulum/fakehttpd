@@ -5,7 +5,7 @@
 void printHelp()
 {
 	printf("Usage:\n");
-	printf("\tfinal  -h <host> -p <port> -d <directory>\n");
+	printf("\tfinal  -h <host> -p <port> -d <directory> [-s start as daemon]\n");
 }
 
 int processArgs(int argc, char **argv, struct sArgs *args)
@@ -14,7 +14,8 @@ int processArgs(int argc, char **argv, struct sArgs *args)
 		return -1;
 	
 	int opt;
-	const char argstr[] = "h:p:d:";
+	args->daemon = 0;
+	const char argstr[] = "h:p:d:s";
 	while ((opt = getopt(argc, argv, argstr)) != -1) {
 		switch (opt) {
 		case 'h':
@@ -25,6 +26,9 @@ int processArgs(int argc, char **argv, struct sArgs *args)
 			break;
 		case 'd':
 			args->dir = optarg;
+			break;
+		case 's':
+			args->daemon = 1;
 			break;
 		default:
 			return -1;

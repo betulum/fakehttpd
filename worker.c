@@ -8,8 +8,8 @@
 #include<sys/stat.h>
 #include<sys/types.h>
 #include<fcntl.h>
-
 #include"arg.h"
+#include"worker.h"
 
 void ok(int sock, int size) {
 	char buf[64];
@@ -64,7 +64,6 @@ void senddata(const char *path, int sock) {
 	}
 }
 
-extern int running;
 void read_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
 	char buf[1024];
@@ -95,28 +94,37 @@ void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
 	ev_io_start(loop, w_client);
 }
 
+void exit_cb(struct ev_loop *loop, struct ev_async *watcher, int revents)
+{
+	ev_break(loop, EVBREAK_ALL);
+}
+
 void *worker_function(void *arg) 
 {
-	struct sArgs *args = (struct sArgs *)arg;
+	struct sThreadData *tdata = (struct sThreadData *)arg;
 	int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	
 	struct sockaddr_in addr;
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(args->port);
-	addr.sin_addr.s_addr = inet_addr(args->ip);
+	addr.sin_port = htons(tdata->args.port);
+	addr.sin_addr.s_addr = inet_addr(tdata->args.ip);
 	bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 	listen(sock, SOMAXCONN);
 
-	struct ev_loop *loop = ev_loop_new(0);
+	struct ev_loop *loop = tdata->loop;//ev_loop_new(EVFLAG_NOSIGMASK);
 	struct ev_io w_accept;
 	ev_io_init(&w_accept, accept_cb, sock, EV_READ);
 	ev_io_start(loop, &w_accept);
 	
-	while (running) {
-		ev_loop(loop, 0);
-	}
-	ev_loop_destroy(loop);
+	//struct ev_async w_exit;
+	ev_async_init(tdata->async_watcher, exit_cb);
+	ev_async_start(loop, tdata->async_watcher);
+	
+	ev_loop(loop, 0);
+	
+	if (!tdata->args.daemon) printf("ev_loop finished\n");
+	//ev_loop_destroy(loop);
 	return NULL;
 }
 
