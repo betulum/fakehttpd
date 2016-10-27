@@ -17,8 +17,10 @@ struct signalData {
 };
 
 void send_term(struct ev_loop *loop, struct signalData *sdata) {
+	// Send async to event loops in child threads
 	for (int i=0; i<sdata->ncpu ; i++)
 		ev_async_send(sdata->wloop[i], sdata->wasync[i]);
+	// Breaks main loop
 	ev_break(loop, EVBREAK_ALL);
 }
 void sigint_cb(struct ev_loop *loop, struct ev_signal *watcher, int revents) {
@@ -36,6 +38,7 @@ void sigterm_cb(struct ev_loop *loop, struct ev_signal *watcher, int revents) {
 int main(int argc, char **argv)
 {
 	struct sThreadData tdata;
+	memset(&tdata, 0, sizeof(tdata));
 	if (processArgs(argc, argv, &tdata.args) < 0) {
 		printHelp();
 		exit(EXIT_FAILURE);
@@ -52,7 +55,9 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 		}
 	}
-
+	/* 	Block SIGINT, SIGTERM signals in all threads.  All child threads inherit this block.
+		Later SIGINT, SIGTERM will be unblocked in main thread.	
+		So, SIGINT, SIGTERM are delivered and handled only in main thread */
 	sigset_t sigset;
 	sigemptyset(&sigset);
 	sigaddset(&sigset, SIGINT);
@@ -68,6 +73,7 @@ int main(int argc, char **argv)
 	sdata.wasync = malloc(sdata.ncpu * sizeof(struct ev_async*));
 	pthread_t *worker = malloc(sdata.ncpu * sizeof(pthread_t));
 	
+	/*	Start one child thread (with its own event loop) on each CPU available */
 	for(int i=0; i<sdata.ncpu; i++) {
 		tdata.loop = sdata.wloop[i] = ev_loop_new(EVFLAG_NOSIGMASK);
 		tdata.async_watcher = sdata.wasync[i] = malloc(sizeof(ev_async));
@@ -77,13 +83,15 @@ int main(int argc, char **argv)
 		}
 		usleep(100);
 	}
+	// 	Unblock SIGINT, SIGTERM signals in main thread	
 	pthread_sigmask(SIG_UNBLOCK, &sigset, NULL);
+	
+	/*	Start main event loop to handle SIGINT and SIGTERM signals*/
 	struct ev_loop *mainloop = ev_default_loop(0);
 	ev_signal_init(&sdata.sigint_watcher, sigint_cb, SIGINT);
 	ev_signal_init(&sdata.sigterm_watcher, sigterm_cb, SIGTERM);
 	ev_signal_start(mainloop, &sdata.sigint_watcher);
 	ev_signal_start(mainloop, &sdata.sigterm_watcher);
-
 	ev_loop(mainloop, 0);
 	
 	if (!tdata.args.daemon) 
