@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 	struct sThreadData tdata;
 	memset(&tdata, 0, sizeof(tdata));
 	if (processArgs(argc, argv, &tdata.args) < 0) {
-		printHelp();
+		printHelp("fakehttpd");
 		exit(EXIT_FAILURE);
 	}
 

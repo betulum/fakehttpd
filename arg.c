@@ -2,10 +2,10 @@
 #include<stdio.h>
 #include"arg.h"
 
-void printHelp()
+void printHelp(char *name)
 {
 	printf("Usage:\n");
-	printf("\tfinal  -h <host> -p <port> -d <directory> [-s start as daemon]\n");
+	printf("\t%s  -h <host> -p <port> -d <directory> [-s start as daemon]\n", name);
 }
 
 int processArgs(int argc, char **argv, struct sArgs *args)
